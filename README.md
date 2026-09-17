@@ -150,7 +150,7 @@ code and generate assets for the refactoring catalog, including a migration plan
 
 The Code Understanding Console App is a standalone web interface for managing and running the Code Understanding workflow. 
 
-To deploy the UI to your Openshift cluster:
+To deploy the app to your Openshift cluster:
 ```
 make deploy-console-app
 # https://code-understanding-console-<namespace>.apps.<cluster-domain>
