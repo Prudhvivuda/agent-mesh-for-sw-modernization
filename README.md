@@ -146,19 +146,19 @@ code and generate assets for the refactoring catalog, including a migration plan
 ## Add-ons (Optional)
 
 <a id="code-understanding-ui"></a>
-### Code Understanding UI
+### Code Understanding Console App
 
-The Code Understanding UI is a standalone web interface for managing and running the Code Understanding workflow. 
+The Code Understanding Console App is a standalone web interface for managing and running the Code Understanding workflow. 
 
 To deploy the UI to your Openshift cluster:
 ```
-make deploy-console
+make deploy-console-app
 # https://code-understanding-console-<namespace>.apps.<cluster-domain>
 ```
 
 To run the app locally:
 ```
-make run-console
+make run-console-app
 # or: ./wrappers/console.sh
 # http://127.0.0.1:8080
 ```
@@ -166,7 +166,7 @@ make run-console
 OR port-forward the cluster deployment:
 
 ```
-make port-forward-console
+make port-forward-console-app
 # http://localhost:8080
 ```
 
@@ -188,4 +188,4 @@ Then launch:
 
 Navigation also appears under **Administrator** → **Home** → **Code Understanding**. 
 
-The plugin is enabled cluster-wide through `consoles.operator.openshift.io/cluster`. If it does not appear at first, run `make enable-console-plugin`.
+**NOTE**: The plugin is enabled cluster-wide through `consoles.operator.openshift.io/cluster`. If it does not appear at first, run `make enable-console-plugin`.

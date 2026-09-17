@@ -73,7 +73,7 @@ install:
 	fi
 	$(MAKE) upload-pipelines
 	$(MAKE) deploy-notebooks
-	$(MAKE) deploy-console
+	$(MAKE) deploy-console-app
 
 deploy-embedding-model:
 	@set -a && . $(ENV_FILE) && set +a && \
@@ -356,13 +356,13 @@ build-console-image:
 	  -s templates/console-build.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
 	oc start-build code-understanding-console --from-dir=ui --follow -n $$KFP_NAMESPACE
 
-run-console:
+run-console-app:
 	@set -a && . $(ENV_FILE) && set +a && \
 	AGENTMESH_REPO_URL="$(GIT_REPO_URL)" AGENTMESH_REPO_REF="$(GIT_REPO_BRANCH)" \
 	KFP_NAMESPACE="$$KFP_NAMESPACE" \
 	uv run --project ui --frozen uvicorn --app-dir ui main:app --host 127.0.0.1 --port 8080
 
-deploy-console: apply-console-src build-console-image
+deploy-console-app: apply-console-src build-console-image
 	@set -a && . $(ENV_FILE) && set +a && \
 	echo "==> Deploying Code Understanding console..." && \
 	helm template agent-mesh-for-sw resources/helm \
@@ -371,7 +371,7 @@ deploy-console: apply-console-src build-console-image
 		--set repoUrl="$(GIT_REPO_URL)" \
 		--set repoRef="$(GIT_REPO_BRANCH)" \
 		--set console.enabled=true \
-		-s templates/console.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+		-s templates/console-app.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
 	oc rollout restart deployment/code-understanding-console -n $$KFP_NAMESPACE && \
 	oc rollout status deployment/code-understanding-console -n $$KFP_NAMESPACE --timeout=300s && \
 	ROUTE_HOST="$$(oc get route code-understanding-console -n $$KFP_NAMESPACE -o jsonpath='{.spec.host}')" && \
@@ -380,10 +380,10 @@ deploy-console: apply-console-src build-console-image
 	echo "    https://$$ROUTE_HOST" && \
 	echo "" && \
 	echo "    Namespace access is enough; this is a Kubernetes Deployment, not an OpenShift console plugin." && \
-	echo "    Or run: make port-forward-console  then open http://localhost:8080" && \
+	echo "    Or run: make port-forward-console-app  then open http://localhost:8080" && \
 	echo ""
 
-port-forward-console:
+port-forward-console-app:
 	@set -a && . $(ENV_FILE) && set +a && \
 	echo "==> Forwarding http://localhost:8080 -> code-understanding-console:8080" && \
 	oc port-forward svc/code-understanding-console 8080:8080 -n $$KFP_NAMESPACE
