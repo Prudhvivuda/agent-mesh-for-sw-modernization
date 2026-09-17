@@ -10,8 +10,6 @@ Contents
   - [Preparing the Environment](#preparing-the-environment)
   - [(Optional) Building the Container Images](#optional-building-the-container-images)
   - [Installing via Makefile](#installing-via-makefile)
-- [Code Understanding Console](#code-understanding-console)
-- [OpenShift Console Plugin](#openshift-console-plugin)
 - [Running the Code Understanding Workflow](#running-the-code-understanding-workflow)
 - [Running Adhoc Queries](#running-adhoc-queries)
 - [Integrating with other tools](#integrating-with-other-tools)
@@ -19,6 +17,9 @@ Contents
   - [1. Data Generation](#1-data-generation)
   - [2. Data Indexing](#2-data-indexing)
   - [3. Data Analysis](#3-data-analysis)
+- [Add-ons (Optional)](#add-ons)
+  - [Code Understanding UI](#code-understanding-ui)
+  - [Code Understanding Console Plugin (requires cluster-admin permissions)](#code-understanding-console-plugin)
 
 <a id="overview"></a>
 ## 🧭 Overview
@@ -33,7 +34,7 @@ Understanding** and **Code Migration**. This repository demonstrates the **Code 
 <a id="tested-with"></a>
 ## Required Software / Tested with
 
-- Red Hat OpenShift 4.18+
+- Red Hat OpenShift 4.18+ (requires Openshift 4.21+ for UI add-ons)
 - Red Hat OpenShift AI 2.22+
 - 1X NVIDIA H200 GPU, 1X NVIDIA H100 GPU, 1X NVIDIA L40S GPU
 - 8+ vCPUs / 24+ GiB RAM
@@ -41,76 +42,27 @@ Understanding** and **Code Migration**. This repository demonstrates the **Code 
 - Openshift AI Model Registry [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.25/html-single/enabling_the_model_registry_component/index)
 - Openshift AI Model Catalog [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_the_model_catalog/index)
 - Openshift AI Pipelines [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/openshift_ai_tutorial_-_fraud_detection_example/setting-up-a-project-and-storage#enabling-ai-pipelines)
-- (Optional) Red Hat build of OpenTelemetry operator [Installation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/distributed_tracing/distributed-tracing-otel-install)
-- (Optional) Tempo Operator [Installation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/distributed_tracing/distributed-tracing-tempo-install)
 - OpenShift CLI (`oc`)
 - Helm CLI (`helm`)
 - Make (`make`)
+- (**Optional**) Red Hat build of OpenTelemetry operator [Installation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/distributed_tracing/distributed-tracing-otel-install)
+- (**Optional**) Tempo Operator [Installation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/distributed_tracing/distributed-tracing-tempo-install)
 
 <a id="documentation"></a>
 
 ## Installing the Code Understanding Workflow
 
 ### Integrating the Models
-Ensure that you have access to OpenAI-compatible endpoints for the 
-following models:
+Ensure that you have access to OpenAI-compatible endpoints for the following models:
 
-1. GraphRAG "chat" model 
-(see <a href="https://microsoft.github.io/graphrag/config/yaml" target="_blank">docs</a>). Candidate models: 
-- gpt-oss-120b (see: `https://huggingface.co/RedHatAI/gpt-oss-120b`)
-```
-#################################
-# Sample vLLM Deployment on H100:
-#################################
-export HF_TOKEN=<your-huggingface-token>
-export VLLM_ALLOW_LONG_MAX_MODEL_LEN=1
-pip install vllm==0.19.0 mistral-common==1.9.1 tqdm==4.67.3 jupyter==1.1.1 hf_transfer==0.1.9 transformers==4.55.2
-nohup python3 -m vllm.entrypoints.openai.api_server \
-    --model RedHatAI/gpt-oss-120b \ 
-    --enable-auto-tool-choice \
-    --tool-call-parser openai \                                                                                    
-    --max-model-len 128000 \
-    > vllm.log 2>&1 &
-```
+| # | Role | Model | Additional Instructions | Links |
+|---|------|-------|------------------------|-------|
+| 1 | GraphRAG "chat" model | gpt-oss-120b | [Deploying gpt-oss-120b](resources/models/deploying-gpt-oss-120b.md) | <a href="https://microsoft.github.io/graphrag/config/yaml" target="_blank">GraphRAG Docs</a> |
+| 2 | GraphRAG "embedding" model | e5-mistral-7b-instruct | [Deploying e5-mistral-7b-instruct](resources/models/deploying-e5-mistral-7b-instruct.md) | <a href="https://microsoft.github.io/graphrag/config/yaml" target="_blank">GraphRAG Docs</a> |
+| 3 | Coding agent** | **(Option A)** Gemma-4-31B-it | [Deploying Gemma-4-31B-it](resources/models/deploying-gemma-4-31b.md) | N/A |
+| 4 | Coding agent** | **(Option B)** gpt-oss-120b | [Deploying gpt-oss-120b](resources/models/deploying-gpt-oss-120b.md) | N/A |
 
-2. GraphRAG "embedding" model 
-(see <a href="https://microsoft.github.io/graphrag/config/yaml" target="_blank">docs</a>). Candidate models:
-- e5-mistral-7b-instruct (see: `https://huggingface.co/intfloat/e5-mistral-7b-instruct`)
-```
-#################################
-# Sample vLLM Deployment on L40S:
-#################################
-export HF_TOKEN=<your-huggingface-token>
-pip install vllm==0.19.0 mistral-common==1.9.1 tqdm==4.67.3 jupyter==1.1.1 hf_transfer==0.1.9 transformers==4.55.2
-nohup python -m vllm.entrypoints.openai.api_server \
---model=intfloat/e5-mistral-7b-instruct \                                                                  
---runner pooling \  # or --task=embed for older vllm                                                                                       
---dtype float16 
-> vllm.log 2>&1 &
-```
-   
-3. Coding agent model (for invoking skills). Candidate models:
-- Gemma-4-31B-it (see: `https://huggingface.co/RedHatAI/gemma-4-31B-it-NVFP4`)
-```
-#################################
-# Sample vLLM Deployment on H200:
-#################################
-pip install vllm==0.19.0 tqdm==4.67.3 jupyter==1.1.1 hf_transfer==0.1.9 huggingface-hub "transformers<5.0.0,>=4.56.0"
-pip install huggingface-hub==1.14.0 transformers==5.8.0
-wget https://huggingface.co/RedHatAI/gemma-4-31B-it-NVFP4/blob/main/chat_template.jinja
-nohup python3 -m vllm.entrypoints.openai.api_server \
-     --model RedHatAI/gemma-4-31B-it-NVFP4 \
-     --quantization fp8 \
-     --kv-cache-dtype fp8 \
-     --enable-auto-tool-choice \
-     --reasoning-parser gemma4 \
-     --tool-call-parser gemma4 \
-     --chat-template chat_template.jinja \
-     --gpu-memory-utilization 0.90 \
-     --max-model-len 262144 \
-      > vllm.log 2>&1 &
-```
-- gpt-oss-120b (see: (a) above)
+<sub>**Optional: Used for "Integrating with other tools" (below)</sub>
 
 ### Preparing the Environment
 
@@ -121,73 +73,20 @@ nohup python3 -m vllm.entrypoints.openai.api_server \
 
 ### Installing via Makefile
 1. Run the Makefile: `make install`
-2. To deploy the local `e5-mistral` embedding model as part of installation, run:
-   `make install DEPLOY_EMBEDDING_MODEL=true`
 
-   When enabled, missing embedding settings are defaulted to the in-cluster
-   `e5-mistral` service and stored in `code-understanding-env`. Explicit
-   `EMBED_LLM_*` values in `.env` are preserved. The model can also be
-   deployed independently with `make deploy-embedding-model`.
-
-## Code Understanding Console
-
-Deploy the FastAPI console as a Kubernetes workload in your namespace. This is the same UI and API as the OpenShift console plugin, for users who cannot install a cluster-wide ConsolePlugin.
-
-```
-make deploy-console
-# https://code-understanding-console-<namespace>.apps.<cluster-domain>
-```
-
-`make deploy-console` builds a container image on-cluster, then applies a Deployment, Service, and Route. Namespace admin is enough; cluster-admin is not required.
-
-Run locally (requires `.env` and cluster credentials for pipeline/chat features):
-
-```
-make run-console
-# or: ./wrappers/console.sh
-# http://127.0.0.1:8080
-```
-
-Or port-forward the cluster deployment:
-
-```
-make port-forward-console
-# http://localhost:8080
-```
-
-The console is also deployed at the end of `make install`.
-
-## OpenShift Console Plugin
-
-The Code Understanding UI is an OpenShift web-console dynamic plugin backed by a FastAPI service (repository catalog, indexes, pipeline jobs, and chat).
-
-Build and deploy the plugin plus API:
-
-```
-make deploy-console-plugin
-```
-
-Then open:
-
-- **Application launcher** (grid menu, top right) → **Code Understanding**
-- Direct URL: `https://<openshift-console-host>/code-understanding`
-
-Navigation also appears under **Administrator** → **Home** → **Code Understanding**. Enabling the plugin is cluster-wide via `consoles.operator.openshift.io/cluster`; re-run `make enable-console-plugin` if needed.
-
-Built for OpenShift **4.21** (`@console/pluginAPI: ^4.21.0`). The plugin nginx serves HTTPS on port 9443 and the FastAPI backend serves HTTPS on port 8443, both with OpenShift serving certificates.
+   (**NOTE**: To deploy the `e5-mistral` embedding model as part of 
+   the installation, run: `make install DEPLOY_EMBEDDING_MODEL=true`)
 
 ## Running the Code Understanding Workflow
 1. To run the **Code Understanding** pipeline for a single repository, run:
 ```make run-pipelines ARGS="--single-repo"```
 
-   To specify the target repository or branch:
+   To override the default repository or branch:
     - Update `GIT_REPO` and `GIT_BRANCH` in `.env` to the desired repository and branch.
-    - Run the following command to update the environment variables: 
-   ```make apply-secrets```
-    - Run the following command: 
-   ```make run-pipelines ARGS="--single-repo"```
+    - Run the following: 
+   ```make apply-secrets && make run-pipelines ARGS="--single-repo"```
 
-   Or without modifying `.env`:
+   OR without modifying `.env`:
    ```make run-pipelines ARGS="--single-repo" PIPELINE_GIT_REPO=https://github.com/org/repo PIPELINE_GIT_BRANCH=main```
 
 2. To run the **Code Understanding** pipeline for multiple repositories:
@@ -240,9 +139,53 @@ representation of the codebase that can be used for querying.
 #### 3. Data Analysis
 
 The **Data Analysis** sub-workflow is used to query the generated GraphRAG index using the GraphRAG SDK.
-It includes both canned and adhoc queries that can be used to explore the 
+It includes both canned and adhoc queries that can be used to explore the
 code and generate assets for the refactoring catalog, including a migration plan.
 
+<a id="add-ons"></a>
+## Add-ons (Optional)
 
+<a id="code-understanding-ui"></a>
+### Code Understanding UI
 
+The Code Understanding UI is a standalone web interface for managing and running the Code Understanding workflow. 
 
+To deploy the UI to your Openshift cluster:
+```
+make deploy-console
+# https://code-understanding-console-<namespace>.apps.<cluster-domain>
+```
+
+To run the app locally:
+```
+make run-console
+# or: ./wrappers/console.sh
+# http://127.0.0.1:8080
+```
+
+OR port-forward the cluster deployment:
+
+```
+make port-forward-console
+# http://localhost:8080
+```
+
+<a id="code-understanding-console-plugin"></a>
+### Code Understanding Console Plugin (requires cluster-admin permissions)
+
+The Code Understanding Console Plugin is an OpenShift web-console dynamic plugin backed by a FastAPI service.
+
+Build and deploy the console plugin:
+
+```
+make deploy-console-plugin
+```
+
+Then launch:
+
+- **Application launcher** (grid menu, top right) → **Code Understanding**
+- Direct URL: `https://<openshift-console-host>/code-understanding`
+
+Navigation also appears under **Administrator** → **Home** → **Code Understanding**. 
+
+The plugin is enabled cluster-wide through `consoles.operator.openshift.io/cluster`. If it does not appear at first, run `make enable-console-plugin`.
