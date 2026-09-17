@@ -353,7 +353,7 @@ build-console-image:
 	helm template agent-mesh-for-sw resources/helm \
 	  --set namespace="$$KFP_NAMESPACE" \
 	  --set console.enabled=true \
-	  -s templates/console-build.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+	  -s templates/console-app.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
 	oc start-build code-understanding-console --from-dir=ui --follow -n $$KFP_NAMESPACE
 
 run-console-app:
@@ -419,7 +419,7 @@ build-console-plugin-image: build-console-plugin
 	  helm template agent-mesh-for-sw resources/helm \
 	    --set namespace="$$KFP_NAMESPACE" \
 	    --set consolePlugin.enabled=true \
-	    -s templates/console-plugin-build.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+	    -s templates/console-plugin.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
 	  oc start-build code-understanding-console-plugin --from-dir=console-plugin --follow -n $$KFP_NAMESPACE; \
 	fi && \
 	echo "$$PLUGIN_IMAGE" > console-plugin/.plugin-image.ref
@@ -430,7 +430,7 @@ build-plugin-api-image:
 	helm template agent-mesh-for-sw resources/helm \
 	  --set namespace="$$KFP_NAMESPACE" \
 	  --set consolePlugin.enabled=true \
-	  -s templates/console-plugin-api-build.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+	  -s templates/console-plugin.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
 	oc start-build code-understanding-plugin-api --from-dir=ui --follow -n $$KFP_NAMESPACE
 
 deploy-console-plugin: apply-plugin-src build-console-plugin-image build-plugin-api-image
@@ -445,7 +445,7 @@ deploy-console-plugin: apply-plugin-src build-console-plugin-image build-plugin-
 		--set clusterDomain="$$CLUSTER_DOMAIN" \
 		--set consolePlugin.enabled=true \
 		--set consolePlugin.consoleBaseUrl="https://$$CONSOLE_HOST" \
-		-s templates/console-plugin-api.yaml | oc apply -f - && \
+		-s templates/console-plugin.yaml | oc apply -f - && \
 	API_HOST="$$(oc get route code-understanding-plugin-api -n $$KFP_NAMESPACE -o jsonpath='{.spec.host}')" && \
 	helm template agent-mesh-for-sw resources/helm \
 		--set namespace="$$KFP_NAMESPACE" \
