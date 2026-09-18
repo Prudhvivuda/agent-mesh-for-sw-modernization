@@ -1046,7 +1046,7 @@
     });
     $("select-all").onclick = () => { state.repos.forEach((r) => state.selected.add(repoKey(r))); renderRepos(); };
     $("clear").onclick = () => { state.selected.clear(); renderRepos(); };
-    $("refresh").onclick = load;
+    //$("refresh").onclick = load;
     $("upload-index").onclick = () => $("index-upload-file").click();
     $("index-upload-file").addEventListener("change", (event) => {
       uploadIndex(event.target.files[0]);
