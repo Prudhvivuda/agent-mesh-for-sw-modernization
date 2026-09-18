@@ -3,7 +3,7 @@
 # Sample vLLM Deployment on H200:
 #################################
 ```
-wget https://huggingface.co/RedHatAI/gemma-4-31B-it-NVFP4/blob/main/chat_template.jinja
+wget -O chat_template.jinja https://huggingface.co/RedHatAI/gemma-4-31B-it-NVFP4/resolve/main/chat_template.jinja
 nohup python3 -m vllm.entrypoints.openai.api_server \
      --model RedHatAI/gemma-4-31B-it-NVFP4 \
      --quantization fp8 \

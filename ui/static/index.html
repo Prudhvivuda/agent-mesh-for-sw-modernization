@@ -539,7 +539,7 @@
           repositories with indexes are shown. If your repository (or group of repositories) is missing,
           it means an index does not yet exist for it.<br/> You may generate repository indexes on the <strong>Analysis</strong> tab.</p>
         <p id="chat-repo-row" class="hidden">
-          <label class="cu-form-label" for="chat-repo">Repository</label>
+          <label class="cu-form-label" for="chat-repo">Select repository</label>
           <select class="cu-select" id="chat-repo"></select>
         </p>
         <p id="chat-loading" class="cu-loading">Loading…</p>
@@ -914,7 +914,6 @@
       $("chat-repo").innerHTML = state.queryable.map((o) =>
         `<option value="${esc(o.key)}">${esc(o.label)}</option>`
       ).join("");
-      if (state.queryable.length) $("chat-repo").value = state.queryable[0].key;
     }
     function renderChat() {
       if (!state.chat.length && !state.thinking) {
@@ -949,6 +948,7 @@
         ]);
         $("status").className = "cu-status" + (status.ok ? "" : " warn");
         $("status").innerHTML = `<strong>${status.ok ? "Connected" : "Not connected"}</strong><div></div>
+          <div>${status.ok ? "" : esc(status.message || "")}</div>
           <div class="cu-muted">Namespace: <b>${esc(status.namespace || "")}</b></div>`;
         state.repos = catalog.repos || [];
         state.defaultKey = catalog.default_key;
