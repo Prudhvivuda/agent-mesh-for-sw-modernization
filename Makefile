@@ -79,7 +79,7 @@ install:
 	fi
 	$(MAKE) upload-pipelines
 	$(MAKE) deploy-notebooks
-	$(MAKE) deploy-console
+	$(MAKE) deploy-console-app
 
 deploy-embedding-model:
 	@set -a && . $(ENV_FILE) && set +a && \
@@ -387,16 +387,16 @@ build-console-image:
 	helm template agent-mesh-for-sw resources/helm \
 	  --set namespace="$$KFP_NAMESPACE" \
 	  --set console.enabled=true \
-	  -s templates/console-build.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
-	oc start-build code-understanding-console --from-dir=ui --wait -n $$KFP_NAMESPACE
+	  -s templates/console-app.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+	oc start-build code-understanding-console --from-dir=ui --follow -n $$KFP_NAMESPACE
 
-run-console:
+run-console-app:
 	@set -a && . $(ENV_FILE) && set +a && \
 	AGENTMESH_REPO_URL="$(GIT_REPO_URL)" AGENTMESH_REPO_REF="$(GIT_REPO_BRANCH)" \
 	KFP_NAMESPACE="$$KFP_NAMESPACE" \
 	uv run --project ui --frozen uvicorn --app-dir ui main:app --host 127.0.0.1 --port 8080
 
-deploy-console: apply-console-src build-console-image
+deploy-console-app: apply-console-src build-console-image
 	@set -a && . $(ENV_FILE) && set +a && \
 	echo "==> Deploying Code Understanding console..." && \
 	helm template agent-mesh-for-sw resources/helm \
@@ -405,7 +405,10 @@ deploy-console: apply-console-src build-console-image
 		--set repoUrl="$(GIT_REPO_URL)" \
 		--set repoRef="$(GIT_REPO_BRANCH)" \
 		--set console.enabled=true \
-		-s templates/console.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+		-s templates/console-app.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+	echo "==> Waiting for console ImageStream tag to be available..." && \
+	until oc get imagestreamtag code-understanding-console:latest -n $$KFP_NAMESPACE \
+		-o jsonpath='{.image.dockerImageReference}' 2>/dev/null | grep -q '@sha256:'; do sleep 5; done && \
 	oc rollout restart deployment/code-understanding-console -n $$KFP_NAMESPACE && \
 	oc rollout status deployment/code-understanding-console -n $$KFP_NAMESPACE --timeout=300s && \
 	ROUTE_HOST="$$(oc get route code-understanding-console -n $$KFP_NAMESPACE -o jsonpath='{.spec.host}')" && \
@@ -414,10 +417,10 @@ deploy-console: apply-console-src build-console-image
 	echo "    https://$$ROUTE_HOST" && \
 	echo "" && \
 	echo "    Namespace access is enough; this is a Kubernetes Deployment, not an OpenShift console plugin." && \
-	echo "    Or run: make port-forward-console  then open http://localhost:8080" && \
+	echo "    Or run: make port-forward-console-app  then open http://localhost:8080" && \
 	echo ""
 
-port-forward-console:
+port-forward-console-app:
 	@set -a && . $(ENV_FILE) && set +a && \
 	echo "==> Forwarding http://localhost:8080 -> code-understanding-console:8080" && \
 	oc port-forward svc/code-understanding-console 8080:8080 -n $$KFP_NAMESPACE
@@ -453,7 +456,7 @@ build-console-plugin-image: build-console-plugin
 	  helm template agent-mesh-for-sw resources/helm \
 	    --set namespace="$$KFP_NAMESPACE" \
 	    --set consolePlugin.enabled=true \
-	    -s templates/console-plugin-build.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+	    -s templates/console-plugin.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
 	  oc start-build code-understanding-console-plugin --from-dir=console-plugin --follow -n $$KFP_NAMESPACE; \
 	fi && \
 	echo "$$PLUGIN_IMAGE" > console-plugin/.plugin-image.ref
@@ -464,7 +467,7 @@ build-plugin-api-image:
 	helm template agent-mesh-for-sw resources/helm \
 	  --set namespace="$$KFP_NAMESPACE" \
 	  --set consolePlugin.enabled=true \
-	  -s templates/console-plugin-api-build.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
+	  -s templates/console-plugin.yaml | oc apply -n $$KFP_NAMESPACE -f - && \
 	oc start-build code-understanding-plugin-api --from-dir=ui --follow -n $$KFP_NAMESPACE
 
 deploy-console-plugin: apply-plugin-src build-console-plugin-image build-plugin-api-image
@@ -479,7 +482,10 @@ deploy-console-plugin: apply-plugin-src build-console-plugin-image build-plugin-
 		--set clusterDomain="$$CLUSTER_DOMAIN" \
 		--set consolePlugin.enabled=true \
 		--set consolePlugin.consoleBaseUrl="https://$$CONSOLE_HOST" \
-		-s templates/console-plugin-api.yaml | oc apply -f - && \
+		-s templates/console-plugin.yaml | oc apply -f - && \
+	echo "==> Waiting for plugin API route hostname..." && \
+	until [ -n "$$(oc get route code-understanding-plugin-api -n $$KFP_NAMESPACE \
+		-o jsonpath='{.spec.host}' 2>/dev/null)" ]; do sleep 2; done && \
 	API_HOST="$$(oc get route code-understanding-plugin-api -n $$KFP_NAMESPACE -o jsonpath='{.spec.host}')" && \
 	helm template agent-mesh-for-sw resources/helm \
 		--set namespace="$$KFP_NAMESPACE" \
@@ -490,6 +496,12 @@ deploy-console-plugin: apply-plugin-src build-console-plugin-image build-plugin-
 		--set consolePlugin.consoleBaseUrl="https://$$CONSOLE_HOST" \
 		--set consolePlugin.apiRouteHost="$$API_HOST" \
 		-s templates/console-plugin.yaml | oc apply -f - && \
+	echo "==> Waiting for console-plugin ImageStream tag to be available..." && \
+	until oc get imagestreamtag code-understanding-console-plugin:latest -n $$KFP_NAMESPACE \
+		-o jsonpath='{.image.dockerImageReference}' 2>/dev/null | grep -q '@sha256:'; do sleep 5; done && \
+	echo "==> Waiting for plugin-api ImageStream tag to be available..." && \
+	until oc get imagestreamtag code-understanding-plugin-api:latest -n $$KFP_NAMESPACE \
+		-o jsonpath='{.image.dockerImageReference}' 2>/dev/null | grep -q '@sha256:'; do sleep 5; done && \
 	oc rollout restart deployment/code-understanding-console-plugin -n $$KFP_NAMESPACE && \
 	oc rollout restart deployment/code-understanding-plugin-api -n $$KFP_NAMESPACE && \
 	oc rollout status deployment/code-understanding-console-plugin -n $$KFP_NAMESPACE --timeout=300s && \

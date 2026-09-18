@@ -1,33 +1,63 @@
-{{- if .Values.consolePlugin.enabled }}
+{{- if .Values.console.enabled }}
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: code-understanding-console
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: code-understanding-console
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: code-understanding-console
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: code-understanding-console
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: code-understanding-console:latest
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  triggers: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: code-understanding-plugin-api
+  name: code-understanding-console
   namespace: {{ .Values.namespace }}
   labels:
-    app: code-understanding-plugin-api
+    app: code-understanding-console
 spec:
-  replicas: 1
+  replicas: {{ .Values.console.replicas }}
   selector:
     matchLabels:
-      app: code-understanding-plugin-api
+      app: code-understanding-console
   template:
     metadata:
       labels:
-        app: code-understanding-plugin-api
+        app: code-understanding-console
     spec:
       serviceAccountName: pipeline-upload-job
       containers:
-        - name: api
-          image: "{{ if .Values.consolePlugin.apiImage }}{{ .Values.consolePlugin.apiImage }}{{ else }}image-registry.openshift-image-registry.svc:5000/{{ .Values.namespace }}/code-understanding-plugin-api:latest{{ end }}"
-          imagePullPolicy: Always
+        - name: console
+          image: "{{ if .Values.console.image }}{{ .Values.console.image }}{{ else }}image-registry.openshift-image-registry.svc:5000/{{ .Values.namespace }}/code-understanding-console:latest{{ end }}"
+          imagePullPolicy: {{ .Values.console.imagePullPolicy | default "Always" }}
           ports:
-            - name: https
-              containerPort: 8443
+            - name: http
+              containerPort: 8080
           env:
             - name: KFP_NAMESPACE
               value: "{{ .Values.namespace }}"
+            - name: KFP_HOST
+              value: "https://ds-pipeline-dspa.{{ .Values.namespace }}.svc.cluster.local:8443"
             - name: AGENTMESH_REPO_URL
               value: "{{ .Values.repoUrl }}"
             - name: AGENTMESH_REPO_REF
@@ -43,23 +73,18 @@ spec:
                 name: code-understanding-env
                 optional: true
           volumeMounts:
-            - name: serving-cert
-              mountPath: /var/serving-cert
-              readOnly: true
-            - name: plugin-api-tmp
+            - name: console-tmp
               mountPath: /tmp
           readinessProbe:
             httpGet:
               path: /api/health
-              port: https
-              scheme: HTTPS
+              port: http
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/health
-              port: https
-              scheme: HTTPS
+              port: http
             initialDelaySeconds: 20
             periodSeconds: 20
           resources:
@@ -72,48 +97,43 @@ spec:
               memory: 1Gi
               ephemeral-storage: {{ .Values.indexWorkspace.ephemeralStorage.limit }}
       volumes:
-        - name: serving-cert
-          secret:
-            secretName: code-understanding-plugin-api-cert
-        - name: plugin-api-tmp
+        - name: console-tmp
           emptyDir:
             sizeLimit: {{ .Values.indexWorkspace.ephemeralStorage.limit }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: code-understanding-plugin-api
+  name: code-understanding-console
   namespace: {{ .Values.namespace }}
   labels:
-    app: code-understanding-plugin-api
-  annotations:
-    service.beta.openshift.io/serving-cert-secret-name: code-understanding-plugin-api-cert
+    app: code-understanding-console
 spec:
   selector:
-    app: code-understanding-plugin-api
+    app: code-understanding-console
   ports:
-    - name: https
-      port: 8443
-      targetPort: https
+    - name: http
+      port: 8080
+      targetPort: http
 ---
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
-  name: code-understanding-plugin-api
+  name: code-understanding-console
   namespace: {{ .Values.namespace }}
   labels:
-    app: code-understanding-plugin-api
+    app: code-understanding-console
   annotations:
     haproxy.router.openshift.io/timeout: 30m
 spec:
   to:
     kind: Service
-    name: code-understanding-plugin-api
+    name: code-understanding-console
     weight: 100
   port:
-    targetPort: https
+    targetPort: http
   tls:
-    termination: reencrypt
+    termination: edge
     insecureEdgeTerminationPolicy: Redirect
   wildcardPolicy: None
 {{- end }}
