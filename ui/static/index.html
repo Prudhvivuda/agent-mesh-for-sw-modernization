@@ -1055,6 +1055,11 @@
       const git_repo = $("custom-url").value.trim();
       const git_branch = $("custom-branch").value.trim() || "main";
       if (!git_repo) return;
+      if (!/^https?:\/\//i.test(git_repo)) {
+        banner("Repository URL must start with http:// or https://", true);
+        $("banner").dataset.reason = "invalid-url";
+        return;
+      }
       const key = `${git_repo}|${git_branch}`;
       if (!state.repos.some((r) => repoKey(r) === key)) state.repos.push({ git_repo, git_branch });
       state.selected.add(key);
