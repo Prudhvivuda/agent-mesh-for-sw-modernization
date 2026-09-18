@@ -78,5 +78,17 @@
       }
     }
   },
-  "model": "vllm/google/gemma-4-31b-it"
+  "model": "vllm/google/gemma-4-31b-it",
+  "mcp": {
+    "rhoai": {
+      "type": "local",
+      "command": [
+        "podman", "run", "--rm", "-i",
+        "-v", "{env:HOME}/.kube:/opt/app-root/.kube:ro",
+        "-e", "RHOAI_MCP_AUTH_MODE=kubeconfig",
+        "{env:MCP_WORKFLOW_NAVIGATOR_BASE_IMAGE_REGISTRY}/{env:MCP_WORKFLOW_NAVIGATOR_BASE_IMAGE_NAME}:{env:MCP_WORKFLOW_NAVIGATOR_BASE_IMAGE_TAG}"
+      ],
+      "enabled": true
+    }
+  }
 }

@@ -1,0 +1,1 @@
+rhoai-mcp @ git+https://github.com/opendatahub-io/rhoai-mcp.git
