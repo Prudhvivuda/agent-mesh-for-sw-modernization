@@ -1,0 +1,15 @@
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/python-311
+FROM ${BASE_IMAGE}
+
+USER 1001
+WORKDIR /opt/app-root/src
+
+ENV KUBECONFIG=/opt/app-root/.kube/config
+
+COPY requirements.txt ./requirements.txt
+
+RUN pip install --no-cache-dir --upgrade pip \
+	&& pip install --no-cache-dir -r requirements.txt
+
+ENTRYPOINT ["rhoai-mcp"]
+CMD ["--transport", "stdio"]
