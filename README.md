@@ -1,5 +1,8 @@
 # Agent Mesh for Software Engineering - Code Understanding
 
+Analyze legacy code, build a GraphRAG knowledge graph, and generate an
+evidence-based modernization plan on Red Hat OpenShift AI.
+
 Contents
 ---
 
@@ -21,6 +24,7 @@ Contents
 - [Add-ons (Optional)](#add-ons)
   - [Code Understanding UI](#code-understanding-ui)
   - [Code Understanding Console Plugin (requires cluster-admin permissions)](#code-understanding-console-plugin)
+- [Tags](#tags)
 
 <a id="overview"></a>
 ## 🧭 Overview
@@ -39,6 +43,7 @@ Understanding** and **Code Migration**. This repository demonstrates the **Code 
 - Red Hat OpenShift AI 2.22+
 - 1X NVIDIA H200 GPU, 1X NVIDIA H100 GPU, 1X NVIDIA L40S GPU
 - 8+ vCPUs / 24+ GiB RAM
+- A default StorageClass capable of provisioning a 50 GiB ReadWriteOnce PVC for object storage
 - MLflow (assumes Openshift AI 3.4+) [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_mlflow/installing-mlflow_mlflow)
 - Openshift AI Model Registry [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.25/html-single/enabling_the_model_registry_component/index)
 - Openshift AI Model Catalog [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_the_model_catalog/index)
@@ -49,6 +54,11 @@ Understanding** and **Code Migration**. This repository demonstrates the **Code 
 - uv CLI (`uv`)
 - (**Optional**) Red Hat build of OpenTelemetry operator [Installation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/distributed_tracing/distributed-tracing-otel-install)
 - (**Optional**) Tempo Operator [Installation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/distributed_tracing/distributed-tracing-tempo-install)
+
+The installer requires a user who can create the target projects and their
+workloads. Deploying project workbench image streams, OpenTelemetry resources,
+or the OpenShift console plugin requires cluster-admin access or equivalent
+delegated permissions.
 
 <a id="documentation"></a>
 
@@ -102,21 +112,32 @@ ownership model. It does not remove externally stored MLflow data, externally
 pushed container images, or the optional cluster-wide OpenShift console plugin.
 
 ## Running the Code Understanding Workflow
+
 1. To run the **Code Understanding** pipeline for a single repository, run:
-```make run-pipelines ARGS="--single-repo"```
+
+   ```sh
+   make run-pipelines ARGS="--single-repo"
+   ```
 
    To override the default repository or branch:
     - Update `GIT_REPO` and `GIT_BRANCH` in `.env` to the desired repository and branch.
     - Run the following: 
-   ```make apply-secrets && make run-pipelines ARGS="--single-repo"```
+   ```sh
+   make apply-secrets
+   make run-pipelines ARGS="--single-repo"
+   ```
 
    OR without modifying `.env`:
-   ```make run-pipelines ARGS="--single-repo" PIPELINE_GIT_REPO=https://github.com/org/repo PIPELINE_GIT_BRANCH=main```
+   ```sh
+   make run-pipelines ARGS="--single-repo" PIPELINE_GIT_REPO=https://github.com/org/repo PIPELINE_GIT_BRANCH=main
+   ```
 
 2. To run the **Code Understanding** pipeline for multiple repositories:
     - Update `workflows/examples/code_understanding/assets/repos/repo_list.json` with the list of repositories to be processed.
     - Run the following command:
-   ```make run-pipelines ARGS="--multi-repo"```
+   ```sh
+   make run-pipelines ARGS="--multi-repo"
+   ```
 
 ## Running Adhoc Queries
 1. To run adhoc queries about the indexed code, run the following:
@@ -219,3 +240,12 @@ Then launch:
 Navigation also appears under **Administrator** → **Home** → **Code Understanding**. 
 
 **NOTE**: The plugin is enabled cluster-wide through `consoles.operator.openshift.io/cluster`. If it does not appear at first, run `make enable-console-plugin`.
+
+## Tags
+
+- **Title:** Agent Mesh for Software Engineering - Code Understanding
+- **Description:** Analyze legacy code with GraphRAG and generate an evidence-based modernization plan on Red Hat OpenShift AI.
+- **Industry:** Cross-industry
+- **Product:** Red Hat OpenShift AI
+- **Use case:** Application modernization, code understanding, generative AI
+- **Contributor organization:** Red Hat
