@@ -43,7 +43,7 @@ Understanding** and **Code Migration**. This repository demonstrates the **Code 
 - Red Hat OpenShift AI 2.22+
 - 1X NVIDIA H200 GPU, 1X NVIDIA H100 GPU, 1X NVIDIA L40S GPU
 - 8+ vCPUs / 24+ GiB RAM
-- A default StorageClass capable of provisioning a 50 GiB ReadWriteOnce PVC for object storage
+- A default StorageClass capable of provisioning a 50 GiB ReadWriteOnce PVC for aws-compatible-storage (S4)
 - MLflow (assumes Openshift AI 3.4+) [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_mlflow/installing-mlflow_mlflow)
 - Openshift AI Model Registry [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.25/html-single/enabling_the_model_registry_component/index)
 - Openshift AI Model Catalog [Installation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_the_model_catalog/index)
@@ -51,6 +51,7 @@ Understanding** and **Code Migration**. This repository demonstrates the **Code 
 - OpenShift CLI (`oc`)
 - Helm CLI (`helm`)
 - Make (`make`)
+- jq (`jq`, for `make verify-deploy`)
 - uv CLI (`uv`)
 - (**Optional**) Red Hat build of OpenTelemetry operator [Installation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/distributed_tracing/distributed-tracing-otel-install)
 - (**Optional**) Tempo Operator [Installation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/distributed_tracing/distributed-tracing-tempo-install)
@@ -82,8 +83,8 @@ Ensure that you have access to OpenAI-compatible endpoints for the following mod
 
    At minimum, configure the following installation and model values:
 
-   - Object storage and project: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-     `S4_UI_USERNAME`, `S4_UI_PASSWORD`, and `KFP_NAMESPACE`.
+   - aws-compatible-storage (S4-backed) and project: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+     `KFP_NAMESPACE`, and optionally `AWS_S3_BUCKET`.
    - GraphRAG chat model: `GRAPHRAG_LLM_TOKEN`, `GRAPHRAG_LLM_ID`,
      `GRAPHRAG_LLM_API_BASE`, `GRAPHRAG_LLM_PROVIDER`, and
      `GRAPHRAG_LLM_PROVIDER_SETTINGS_XML`.
